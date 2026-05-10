@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Revienta Globos 🎈</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    body {
+      background: linear-gradient(180deg, #87CEEB 0%, #E0F7FF 60%, #90EE90 60%, #5DBB63 100%);
+      min-height: 100dvh;
+      overflow: hidden;
+      font-family: 'Comic Sans MS', 'Chalkboard SE', cursive;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #hud {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(6px);
+      border-bottom: 3px solid #FFD700;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .hud-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .hud-label {
+      font-size: 11px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .hud-value {
+      font-size: 28px;
+      font-weight: bold;
+      color: #FF5722;
+      line-height: 1;
+    }
+
+    #lives-display {
+      font-size: 22px;
+      letter-spacing: 2px;
+    }
+
+    #level-display {
+      font-size: 28px;
+      font-weight: bold;
+      color: #9C27B0;
+    }
+
+    #game-area {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: hidden;
+    }
+
+    /* Clouds */
+    .cloud {
+      position: absolute;
+      background: white;
+      border-radius: 50px;
+      opacity: 0.8;
+    }
+    .cloud::before, .cloud::after {
+      content: '';
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+    }
+    .cloud-1 { width: 80px; height: 30px; top: 12%; left: 5%; animation: drift 18s linear infinite; }
+    .cloud-1::before { width: 40px; height: 40px; top: -20px; left: 10px; }
+    .cloud-1::after  { width: 30px; height: 30px; top: -12px; left: 35px; }
+    .cloud-2 { width: 100px; height: 35px; top: 22%; right: 8%; animation: drift 24s linear infinite reverse; }
+    .cloud-2::before { width: 50px; height: 50px; top: -25px; left: 15px; }
+    .cloud-2::after  { width: 35px; height: 35px; top: -15px; left: 50px; }
+
+    @keyframes drift {
+      0%   { transform: translateX(0); }
+      50%  { transform: translateX(30px); }
+      100% { transform: translateX(0); }
+    }
+
+    /* Sun */
+    .sun {
+      position: absolute;
+      top: 70px;
+      right: 20px;
+      width: 60px;
+      height: 60px;
+      background: radial-gradient(circle, #FFD700, #FFA500);
+      border-radius: 50%;
+      box-shadow: 0 0 20px 8px rgba(255, 220, 0, 0.4);
+      animation: pulse-sun 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse-sun {
+      0%, 100% { box-shadow: 0 0 20px 8px rgba(255,220,0,0.4); }
+      50%       { box-shadow: 0 0 30px 15px rgba(255,220,0,0.6); }
+    }
+
+    /* Grass details */
+    .grass-flower {
+      position: absolute;
+      bottom: 5px;
+      font-size: 24px;
+    }
+
+    /* Balloon */
+    .balloon {
+      position: absolute;
+      bottom: -120px;
+      cursor: pointer;
+      animation: float-up linear forwards;
+      filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.25));
+      will-change: transform, bottom;
+      z-index: 10;
+    }
+
+    .balloon-body {
+      width: 70px;
+      height: 85px;
+      border-radius: 50% 50% 45% 45%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      box-shadow: inset -8px -8px 0 rgba(0,0,0,0.12), inset 6px 6px 0 rgba(255,255,255,0.35);
+      transition: transform 0.05s;
+    }
+
+    .balloon-knot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .balloon-string {
+      width: 2px;
+      height: 50px;
+      background: rgba(0,0,0,0.25);
+      margin: 0 auto;
+      border-radius: 1px;
+    }
+
+    .balloon:active .balloon-body {
+      transform: scale(0.9);
+    }
+
+    @keyframes float-up {
+      0%   { bottom: -120px; opacity: 1; }
+      85%  { opacity: 1; }
+      100% { bottom: 110%; opacity: 0; }
+    }
+
+    /* Pop animation */
+    .pop-burst {
+      position: absolute;
+      pointer-events: none;
+      z-index: 50;
+      animation: burst 0.5s ease-out forwards;
+    }
+
+    @keyframes burst {
+      0%   { transform: scale(0);   opacity: 1; }
+      60%  { transform: scale(1.6); opacity: 0.8; }
+      100% { transform: scale(2.5); opacity: 0; }
+    }
+
+    .pop-particles span {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      animation: particle 0.5s ease-out forwards;
+    }
+
+    @keyframes particle {
+      0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { transform: var(--tx) scale(0); opacity: 0; }
+    }
+
+    /* Score floating text */
+    .score-float {
+      position: absolute;
+      font-size: 26px;
+      font-weight: bold;
+      color: #FF5722;
+      text-shadow: 1px 1px 0 white, -1px -1px 0 white, 1px -1px 0 white, -1px 1px 0 white;
+      pointer-events: none;
+      z-index: 60;
+      animation: float-score 0.9s ease-out forwards;
+    }
+
+    @keyframes float-score {
+      0%   { transform: translateY(0) scale(1);    opacity: 1; }
+      100% { transform: translateY(-70px) scale(1.3); opacity: 0; }
+    }
+
+    /* Screens */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(4px);
+    }
+
+    .screen-card {
+      background: white;
+      border-radius: 28px;
+      padding: 36px 32px;
+      max-width: 340px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+      animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes pop-in {
+      from { transform: scale(0.5); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    .screen-title {
+      font-size: 42px;
+      margin-bottom: 8px;
+    }
+
+    .screen-subtitle {
+      font-size: 20px;
+      color: #555;
+      margin-bottom: 24px;
+      line-height: 1.3;
+    }
+
+    .screen-score {
+      font-size: 36px;
+      font-weight: bold;
+      color: #FF5722;
+      margin-bottom: 8px;
+    }
+
+    .screen-best {
+      font-size: 16px;
+      color: #888;
+      margin-bottom: 28px;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 16px 40px;
+      border-radius: 50px;
+      border: none;
+      font-family: inherit;
+      font-size: 22px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 6px 0 rgba(0,0,0,0.2);
+      transition: transform 0.1s, box-shadow 0.1s;
+      width: 100%;
+    }
+
+    .btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #FF6B35, #FF4500);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #4CAF50, #2E7D32);
+      color: white;
+      margin-top: 12px;
+    }
+
+    .hidden { display: none !important; }
+
+    /* Difficulty stars */
+    .difficulty-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .diff-btn {
+      flex: 1;
+      padding: 12px 8px;
+      border-radius: 14px;
+      border: 3px solid transparent;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.1s, border-color 0.1s;
+    }
+
+    .diff-btn:active { transform: scale(0.95); }
+    .diff-btn.easy   { background: #C8E6C9; color: #2E7D32; border-color: #4CAF50; }
+    .diff-btn.medium { background: #FFF9C4; color: #F57F17; border-color: #FFC107; }
+    .diff-btn.hard   { background: #FFCDD2; color: #B71C1C; border-color: #F44336; }
+
+    /* Combo badge */
+    #combo-badge {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%) scale(0);
+      background: linear-gradient(135deg, #FF6B35, #FF4500);
+      color: white;
+      font-size: 20px;
+      font-weight: bold;
+      padding: 8px 20px;
+      border-radius: 50px;
+      z-index: 150;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(255,69,0,0.4);
+    }
+    #combo-badge.visible { transform: translateX(-50%) scale(1); }
+  </style>
+</head>
+<body>
+
+<!-- Game Area (background decorations) -->
+<div id="game-area">
+  <div class="sun"></div>
+  <div class="cloud cloud-1"></div>
+  <div class="cloud cloud-2"></div>
+  <span class="grass-flower" style="left:8%">🌸</span>
+  <span class="grass-flower" style="left:20%">🌼</span>
+  <span class="grass-flower" style="left:38%">🌻</span>
+  <span class="grass-flower" style="left:55%">🌷</span>
+  <span class="grass-flower" style="left:72%">🌸</span>
+  <span class="grass-flower" style="left:88%">🌼</span>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-box">
+    <span class="hud-label">Puntos</span>
+    <span class="hud-value" id="score-display">0</span>
+  </div>
+  <div class="hud-box">
+    <span class="hud-label">Vidas</span>
+    <span id="lives-display">❤️❤️❤️</span>
+  </div>
+  <div class="hud-box">
+    <span class="hud-label">Nivel</span>
+    <span class="hud-value" id="level-display" style="color:#9C27B0">1</span>
+  </div>
+</div>
+
+<!-- Combo badge -->
+<div id="combo-badge">🔥 ¡COMBO x<span id="combo-count">0</span>!</div>
+
+<!-- Start Screen -->
+<div class="screen" id="start-screen">
+  <div class="screen-card">
+    <div class="screen-title">🎈</div>
+    <div class="screen-subtitle" style="font-size:26px;font-weight:bold;color:#FF5722;margin-bottom:4px">Revienta Globos</div>
+    <div class="screen-subtitle">¡Toca los globos antes de que vuelen!</div>
+    <div class="difficulty-row">
+      <button class="diff-btn easy"   onclick="startGame('easy')">🐣<br>Fácil</button>
+      <button class="diff-btn medium" onclick="startGame('medium')">🦊<br>Normal</button>
+      <button class="diff-btn hard"   onclick="startGame('hard')">🦁<br>Difícil</button>
+    </div>
+    <div style="font-size:13px;color:#aaa">Mejor puntuación: <strong id="best-start">0</strong></div>
+  </div>
+</div>
+
+<!-- Game Over Screen -->
+<div class="screen hidden" id="gameover-screen">
+  <div class="screen-card">
+    <div class="screen-title">🎈💥</div>
+    <div class="screen-subtitle">¡Se acabó el juego!</div>
+    <div class="screen-score" id="final-score">0 pts</div>
+    <div class="screen-best" id="final-best"></div>
+    <button class="btn btn-primary" onclick="showStart()">🔄 Jugar de nuevo</button>
+  </div>
+</div>
+
+<script>
+  // ─── Config ──────────────────────────────────────────────────────────────────
+  const DIFFICULTIES = {
+    easy:   { spawnMs: 1600, speedMs: [7000, 9000], lives: 5, pointsPerBalloon: 1 },
+    medium: { spawnMs: 1100, speedMs: [5000, 7000], lives: 3, pointsPerBalloon: 2 },
+    hard:   { spawnMs: 700,  speedMs: [3500, 5000], lives: 2, pointsPerBalloon: 3 },
+  };
+
+  const BALLOON_EMOJIS = ['⭐','🍎','🍊','🍋','🍇','🍓','🌈','🦋','🐸','🐥','🐙','🦄','🍭','🎁','🍦'];
+  const BALLOON_COLORS = [
+    ['#FF6B6B','#CC3333'], ['#FF9F43','#CC6600'], ['#FECA57','#CC9900'],
+    ['#48DBFB','#0099CC'], ['#54A0FF','#0055CC'], ['#A29BFE','#6644CC'],
+    ['#FD79A8','#CC3366'], ['#55EFC4','#00AA77'], ['#B8E994','#55AA00'],
+    ['#F8C291','#CC7733'],
+  ];
+
+  // ─── State ───────────────────────────────────────────────────────────────────
+  let score = 0, lives = 3, level = 1, combo = 0, comboTimer;
+  let bestScore = parseInt(localStorage.getItem('balloonBest') || '0');
+  let difficulty = 'easy';
+  let spawnInterval, activeBalloons = [], isRunning = false;
+  let balloonsPopped = 0;
+  const BALLOONS_PER_LEVEL = 10;
+
+  // ─── Audio ───────────────────────────────────────────────────────────────────
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+  function playPop(pitch = 1) {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(400 * pitch, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.15);
+    g.gain.setValueAtTime(0.35, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + 0.2);
+  }
+
+  function playLevelUp() {
+    [523, 659, 784, 1046].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'triangle';
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.1);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.1 + 0.25);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(ctx.currentTime + i * 0.1);
+      o.stop(ctx.currentTime + i * 0.1 + 0.3);
+    });
+  }
+
+  function playMiss() {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(200, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.3);
+    g.gain.setValueAtTime(0.2, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + 0.35);
+  }
+
+  // ─── UI helpers ──────────────────────────────────────────────────────────────
+  function updateHUD() {
+    document.getElementById('score-display').textContent = score;
+    document.getElementById('level-display').textContent = level;
+    const heartsArr = Array(DIFFICULTIES[difficulty].lives).fill('❤️');
+    const emptiesArr = Array(Math.max(0, DIFFICULTIES[difficulty].lives - lives)).fill('🖤');
+    // Show filled hearts = lives remaining, black = lost
+    const h = '❤️'.repeat(lives) + '🖤'.repeat(Math.max(0, DIFFICULTIES[difficulty].lives - lives));
+    document.getElementById('lives-display').textContent = h;
+  }
+
+  // ─── Balloon factory ─────────────────────────────────────────────────────────
+  function spawnBalloon() {
+    if (!isRunning) return;
+    const cfg = DIFFICULTIES[difficulty];
+    const gameArea = document.getElementById('game-area');
+    const vw = window.innerWidth;
+
+    const balloon = document.createElement('div');
+    balloon.className = 'balloon';
+
+    const colorPair = BALLOON_COLORS[Math.floor(Math.random() * BALLOON_COLORS.length)];
+    const emoji = BALLOON_EMOJIS[Math.floor(Math.random() * BALLOON_EMOJIS.length)];
+    const speed = cfg.speedMs[0] + Math.random() * (cfg.speedMs[1] - cfg.speedMs[0]);
+    const xPos  = 20 + Math.random() * (vw - 100);
+
+    balloon.style.left = xPos + 'px';
+    balloon.style.animationDuration = speed + 'ms';
+
+    balloon.innerHTML = `
+      <div class="balloon-body" style="background:radial-gradient(circle at 35% 35%, ${colorPair[0]}, ${colorPair[1]})">${emoji}</div>
+      <div class="balloon-knot" style="background:${colorPair[1]}"></div>
+      <div class="balloon-string"></div>
+    `;
+
+    balloon.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      if (ctx.state === 'suspended') ctx.resume();
+      popBalloon(balloon, xPos + 35, window.innerHeight - parseFloat(getComputedStyle(balloon).bottom || 0) - 85);
+    });
+
+    // When balloon escapes
+    balloon.addEventListener('animationend', () => {
+      if (!balloon.popped && document.getElementById('game-area').contains(balloon)) {
+        balloon.remove();
+        activeBalloons = activeBalloons.filter(b => b !== balloon);
+        missedBalloon();
+      }
+    });
+
+    gameArea.appendChild(balloon);
+    activeBalloons.push(balloon);
+  }
+
+  function popBalloon(balloon, x, y) {
+    if (balloon.popped) return;
+    balloon.popped = true;
+    balloon.remove();
+    activeBalloons = activeBalloons.filter(b => b !== balloon);
+
+    // Combo
+    combo++;
+    clearTimeout(comboTimer);
+    comboTimer = setTimeout(() => { combo = 0; hideComboBadge(); }, 1500);
+
+    const pts = DIFFICULTIES[difficulty].pointsPerBalloon * (combo >= 3 ? combo : 1);
+    score += pts;
+    balloonsPopped++;
+
+    // Level up?
+    if (balloonsPopped % BALLOONS_PER_LEVEL === 0) {
+      level++;
+      playLevelUp();
+      showLevelBanner();
+    }
+
+    playPop(0.8 + Math.random() * 0.6);
+    showBurst(x, y);
+    showScoreFloat(x, y, pts, combo >= 3);
+    if (combo >= 3) showComboBadge();
+    updateHUD();
+  }
+
+  function missedBalloon() {
+    lives--;
+    playMiss();
+    updateHUD();
+    shakeHUD();
+    if (lives <= 0) endGame();
+  }
+
+  // ─── Visual effects ───────────────────────────────────────────────────────────
+  function showBurst(x, y) {
+    const burst = document.createElement('div');
+    burst.className = 'pop-burst pop-particles';
+    burst.style.left = (x - 40) + 'px';
+    burst.style.top  = (y - 40) + 'px';
+    burst.style.width = '80px';
+    burst.style.height = '80px';
+    const colors = ['#FF6B6B','#FFD700','#54A0FF','#FF9F43','#A29BFE','#55EFC4'];
+    for (let i = 0; i < 8; i++) {
+      const p = document.createElement('span');
+      const angle = (i / 8) * Math.PI * 2;
+      const dist = 40 + Math.random() * 30;
+      p.style.left = '34px';
+      p.style.top  = '34px';
+      p.style.background = colors[Math.floor(Math.random() * colors.length)];
+      p.style.setProperty('--tx', `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`);
+      p.style.animationDelay = (Math.random() * 0.08) + 's';
+      burst.appendChild(p);
+    }
+    document.getElementById('game-area').appendChild(burst);
+    setTimeout(() => burst.remove(), 600);
+  }
+
+  function showScoreFloat(x, y, pts, isCombo) {
+    const el = document.createElement('div');
+    el.className = 'score-float';
+    el.textContent = isCombo ? `+${pts} 🔥` : `+${pts}`;
+    el.style.left = (x - 20) + 'px';
+    el.style.top  = (y - 20) + 'px';
+    if (isCombo) el.style.color = '#FF5722';
+    document.getElementById('game-area').appendChild(el);
+    setTimeout(() => el.remove(), 950);
+  }
+
+  function showComboBadge() {
+    const badge = document.getElementById('combo-badge');
+    document.getElementById('combo-count').textContent = combo;
+    badge.classList.add('visible');
+  }
+
+  function hideComboBadge() {
+    document.getElementById('combo-badge').classList.remove('visible');
+  }
+
+  function shakeHUD() {
+    const hud = document.getElementById('hud');
+    hud.style.animation = 'none';
+    hud.style.transform = 'translateX(-6px)';
+    setTimeout(() => hud.style.transform = 'translateX(6px)', 80);
+    setTimeout(() => hud.style.transform = 'translateX(-4px)', 160);
+    setTimeout(() => hud.style.transform = 'translateX(0)', 240);
+  }
+
+  function showLevelBanner() {
+    const el = document.createElement('div');
+    el.style.cssText = `
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(0);
+      background:linear-gradient(135deg,#9C27B0,#673AB7); color:white;
+      font-size:32px; font-weight:bold; padding:20px 40px; border-radius:20px;
+      z-index:300; box-shadow:0 8px 24px rgba(0,0,0,0.3);
+      animation: pop-in 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    `;
+    el.textContent = `🎉 ¡Nivel ${level}!`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1400);
+  }
+
+  // ─── Game flow ────────────────────────────────────────────────────────────────
+  function startGame(diff) {
+    if (ctx.state === 'suspended') ctx.resume();
+    difficulty = diff;
+    score = 0; combo = 0; level = 1; balloonsPopped = 0;
+    lives = DIFFICULTIES[difficulty].lives;
+    isRunning = true;
+
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('gameover-screen').classList.add('hidden');
+    updateHUD();
+
+    clearInterval(spawnInterval);
+    activeBalloons.forEach(b => b.remove());
+    activeBalloons = [];
+
+    spawnBalloon(); // immediate first balloon
+    spawnInterval = setInterval(() => {
+      // Gradually speed up within the same difficulty
+      spawnBalloon();
+    }, Math.max(400, DIFFICULTIES[difficulty].spawnMs - level * 40));
+  }
+
+  function endGame() {
+    isRunning = false;
+    clearInterval(spawnInterval);
+    activeBalloons.forEach(b => b.remove());
+    activeBalloons = [];
+    hideComboBadge();
+
+    const isNew = score > bestScore;
+    if (isNew) { bestScore = score; localStorage.setItem('balloonBest', bestScore); }
+
+    document.getElementById('final-score').textContent = score + ' pts';
+    document.getElementById('final-best').textContent = isNew
+      ? '🏆 ¡Nuevo récord!'
+      : `Mejor puntuación: ${bestScore} pts`;
+    document.getElementById('gameover-screen').classList.remove('hidden');
+  }
+
+  function showStart() {
+    document.getElementById('gameover-screen').classList.add('hidden');
+    document.getElementById('start-screen').classList.remove('hidden');
+    document.getElementById('best-start').textContent = bestScore;
+  }
+
+  // ─── Init ─────────────────────────────────────────────────────────────────────
+  document.getElementById('best-start').textContent = bestScore;
+
+  // Unlock audio on first interaction
+  document.addEventListener('pointerdown', () => {
+    if (ctx.state === 'suspended') ctx.resume();
+  }, { once: true });
+</script>
+</body>
+</html>
